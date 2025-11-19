@@ -21,7 +21,7 @@
         "id": 4,
         "title": "E-commerce App",
         "description": "MERN E-Commerce Platform. The platform features dynamic product catalog with filtering and sorting, real-time search, seamless cart updates, secure checkout, and a comprehensive admin dashboard with real-time analytics and user management capabilities.",
-        "image": "/images/myProjects/4_project.svg"
+        "image": "./images/myProjects/4_project.svg"
     },
     {
         "id": 5,
