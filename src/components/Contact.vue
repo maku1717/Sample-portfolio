@@ -130,7 +130,7 @@ const submitForm = async () => {
   }
 };
 
-const SITE_KEY = "6Ldw0xEsAAAAAJLYwQEa-O-2VqqMilpTvnpPBwwe";
+const SITE_KEY = "6Lec1BEsAAAAAJbM8aqlgE2RSekJbA5J31Tt4RLf";
 const recaptchaContainer = ref(null);
 const recaptchaWidgetId = ref(null);
 const recaptchaToken = ref("");
