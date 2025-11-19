@@ -3,7 +3,6 @@
   <h1 class="text-center my-4 pt-5" id="contact">Contact</h1>
   <div class="contact-section">
     <div class="row align-items-center mt-4">
-      <!-- MAP -->
       <div class="col-md-6 map-container">
         <iframe
           id="gmap_canvas"
@@ -14,8 +13,6 @@
           marginwidth="0"
         ></iframe>
       </div>
-
-      <!-- CONTACT FORM -->
       <div class="col-md-6">
         <form @submit.prevent="submitForm">
           <div class="mb-3">
@@ -26,7 +23,6 @@
               placeholder="First Name M.I. Last Name"
             />
           </div>
-
           <div class="mb-3">
             <input
               type="email"
@@ -35,7 +31,6 @@
               placeholder="Email"
             />
           </div>
-
           <div class="mb-3">
             <textarea
               v-model="message"
@@ -44,24 +39,20 @@
               placeholder="Message"
             ></textarea>
           </div>
-
-          <!-- SOCIAL ICONS + SUBMIT -->
           <div class="form-footer">
             <div class="social-icons">
               <a
                 href="https://www.linkedin.com/in/charles-babbage-8291a6211/"
                 id="linkedin"
-              >
-                <i class="fab fa-linkedin"></i>
-              </a>
-              <a href="https://gitlab.com/cbabbage0991" id="gitlab">
-                <i class="fab fa-gitlab"></i>
-              </a>
-              <a href="https://github.com/cbabbage0991" id="github">
-                <i class="fab fa-github"></i>
-              </a>
+                ><i class="fab fa-linkedin"></i
+              ></a>
+              <a href="https://gitlab.com/cbabbage0991" id="gitlab"
+                ><i class="fab fa-gitlab"></i
+              ></a>
+              <a href="https://github.com/cbabbage0991" id="github"
+                ><i class="fab fa-github"></i
+              ></a>
             </div>
-
             <button
               type="submit"
               class="submit-btn pl-5 pr-5"
@@ -69,8 +60,7 @@
             >
               {{ isLoading ? "Sending..." : "Submit" }}
             </button>
-
-            <!-- reCAPTCHA -->
+            <!-- recaptcha -->
             <div class="d-flex justify-content-end mt-2">
               <div ref="recaptchaContainer"></div>
             </div>
@@ -82,35 +72,70 @@
 </template>
 
 <script setup>
-import { onMounted, ref, onBeforeUnmount } from "vue";
+import { onBeforeMount, onMounted, ref } from "vue";
+
 import { Notyf } from "notyf";
 import "notyf/notyf.min.css";
 
 const notyf = new Notyf();
 
-// Web3Forms
-const WEB3FORMS_ACCESS_KEY = "337767d6-21d8-4077-9aac-3a3aff1686fa";
-const subject = "New Message from Portfolio Contact Form";
+const WEB3FORMS_ACCESS_KEY = "69fc1022-7b4a-4bbb-996d-e6b7a0c6e6b5";
 
-// Inputs
+const subject = "New message from Portfolio Contact Form";
+
 const name = ref("");
 const email = ref("");
 const message = ref("");
 
-// Loading state
 const isLoading = ref(false);
 
-// reCAPTCHA
+// function for submit form
+const submitForm = async () => {
+  if (!recaptchaToken.value) {
+    notyf.error("Please verify that you are not a robot.");
+    return;
+  }
+  isLoading.value = true;
+
+  try {
+    const response = await fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: subject,
+        name: name.value,
+        email: email.value,
+        message: message.value,
+      }),
+    });
+    const result = await response.json();
+
+    if (result.data.subject) {
+      console.log(result);
+
+      isLoading.value = false;
+      notyf.success("Message Sent!");
+    }
+  } catch (error) {
+    console.log(error);
+
+    isLoading.value = false;
+    notyf.error("Failed to send message.");
+  } finally {
+    resetRecaptcha();
+  }
+};
+
 const SITE_KEY = "6LdSxREsAAAAAEPo3f5jkPgD3iswvsuNADLtTiLq";
 const recaptchaContainer = ref(null);
 const recaptchaWidgetId = ref(null);
 const recaptchaToken = ref("");
 
-// interval must be declared here
-let interval = null;
-
-// reCAPTCHA callbacks
-function onRecaptchaSuccess(token) {
+function onRecaptchaSucess(token) {
   recaptchaToken.value = token;
 }
 
@@ -123,11 +148,10 @@ function renderRecaptcha() {
     console.error("reCAPTCHA not loaded");
     return;
   }
-
   recaptchaWidgetId.value = window.grecaptcha.render(recaptchaContainer.value, {
     sitekey: SITE_KEY,
     size: "normal",
-    callback: onRecaptchaSuccess,
+    callback: onRecaptchaSucess,
     "expired-callback": onRecaptchaExpired,
   });
 }
@@ -139,64 +163,15 @@ function resetRecaptcha() {
   }
 }
 
-// listen for recaptcha loading
 onMounted(() => {
-  interval = setInterval(() => {
+  const interval = setInterval(() => {
     if (window.grecaptcha && window.grecaptcha.render) {
       renderRecaptcha();
       clearInterval(interval);
     }
   }, 100);
+  onBeforeMount(() => {
+    clearInterval(interval);
+  });
 });
-
-// cleanup on unmount
-onBeforeUnmount(() => {
-  if (interval) clearInterval(interval);
-});
-
-// Submit Form
-const submitForm = async () => {
-  // Validate reCAPTCHA
-  if (!recaptchaToken.value) {
-    notyf.error("Please verify that you are not a robot.");
-    return;
-  }
-
-  isLoading.value = true;
-
-  try {
-    const response = await fetch("https://api.web3forms.com/submit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        access_key: WEB3FORMS_ACCESS_KEY,
-        subject,
-        name: name.value,
-        email: email.value,
-        message: message.value,
-        "g-recaptcha-response": recaptchaToken.value, // required by Web3Forms
-      }),
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      notyf.success("Message Sent!");
-      name.value = "";
-      email.value = "";
-      message.value = "";
-    } else {
-      notyf.error("Failed to send message.");
-    }
-  } catch (error) {
-    console.log(error);
-    notyf.error("Failed to send message.");
-  } finally {
-    resetRecaptcha();
-    isLoading.value = false;
-  }
-};
 </script>
