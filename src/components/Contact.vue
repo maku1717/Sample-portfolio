@@ -3,6 +3,7 @@
   <h1 class="text-center my-4 pt-5" id="contact">Contact</h1>
   <div class="contact-section">
     <div class="row align-items-center mt-4">
+      <!-- MAP -->
       <div class="col-md-6 map-container">
         <iframe
           id="gmap_canvas"
@@ -13,6 +14,8 @@
           marginwidth="0"
         ></iframe>
       </div>
+
+      <!-- CONTACT FORM -->
       <div class="col-md-6">
         <form @submit.prevent="submitForm">
           <div class="mb-3">
@@ -23,6 +26,7 @@
               placeholder="First Name M.I. Last Name"
             />
           </div>
+
           <div class="mb-3">
             <input
               type="email"
@@ -31,6 +35,7 @@
               placeholder="Email"
             />
           </div>
+
           <div class="mb-3">
             <textarea
               v-model="message"
@@ -39,20 +44,24 @@
               placeholder="Message"
             ></textarea>
           </div>
+
+          <!-- SOCIAL ICONS + SUBMIT -->
           <div class="form-footer">
             <div class="social-icons">
               <a
                 href="https://www.linkedin.com/in/charles-babbage-8291a6211/"
                 id="linkedin"
-                ><i class="fab fa-linkedin"></i
-              ></a>
-              <a href="https://gitlab.com/cbabbage0991" id="gitlab"
-                ><i class="fab fa-gitlab"></i
-              ></a>
-              <a href="https://github.com/cbabbage0991" id="github"
-                ><i class="fab fa-github"></i
-              ></a>
+              >
+                <i class="fab fa-linkedin"></i>
+              </a>
+              <a href="https://gitlab.com/cbabbage0991" id="gitlab">
+                <i class="fab fa-gitlab"></i>
+              </a>
+              <a href="https://github.com/cbabbage0991" id="github">
+                <i class="fab fa-github"></i>
+              </a>
             </div>
+
             <button
               type="submit"
               class="submit-btn pl-5 pr-5"
@@ -60,6 +69,11 @@
             >
               {{ isLoading ? "Sending..." : "Submit" }}
             </button>
+
+            <!-- reCAPTCHA -->
+            <div class="d-flex justify-content-end mt-2">
+              <div ref="recaptchaContainer"></div>
+            </div>
           </div>
         </form>
       </div>
@@ -68,23 +82,86 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
-import { Notyf } from "notyf"; // ✅ Correct import
+import { onMounted, ref, onBeforeUnmount } from "vue";
+import { Notyf } from "notyf";
 import "notyf/notyf.min.css";
 
 const notyf = new Notyf();
 
+// Web3Forms
 const WEB3FORMS_ACCESS_KEY = "337767d6-21d8-4077-9aac-3a3aff1686fa";
-
 const subject = "New Message from Portfolio Contact Form";
 
+// Inputs
 const name = ref("");
 const email = ref("");
 const message = ref("");
 
+// Loading state
 const isLoading = ref(false);
 
+// reCAPTCHA
+const SITE_KEY = "6LdSxREsAAAAAEPo3f5jkPgD3iswvsuNADLtTiLq";
+const recaptchaContainer = ref(null);
+const recaptchaWidgetId = ref(null);
+const recaptchaToken = ref("");
+
+// interval must be declared here
+let interval = null;
+
+// reCAPTCHA callbacks
+function onRecaptchaSuccess(token) {
+  recaptchaToken.value = token;
+}
+
+function onRecaptchaExpired() {
+  recaptchaToken.value = "";
+}
+
+function renderRecaptcha() {
+  if (!window.grecaptcha) {
+    console.error("reCAPTCHA not loaded");
+    return;
+  }
+
+  recaptchaWidgetId.value = window.grecaptcha.render(recaptchaContainer.value, {
+    sitekey: SITE_KEY,
+    size: "normal",
+    callback: onRecaptchaSuccess,
+    "expired-callback": onRecaptchaExpired,
+  });
+}
+
+function resetRecaptcha() {
+  if (recaptchaWidgetId.value !== null) {
+    window.grecaptcha.reset(recaptchaWidgetId.value);
+    recaptchaToken.value = "";
+  }
+}
+
+// listen for recaptcha loading
+onMounted(() => {
+  interval = setInterval(() => {
+    if (window.grecaptcha && window.grecaptcha.render) {
+      renderRecaptcha();
+      clearInterval(interval);
+    }
+  }, 100);
+});
+
+// cleanup on unmount
+onBeforeUnmount(() => {
+  if (interval) clearInterval(interval);
+});
+
+// Submit Form
 const submitForm = async () => {
+  // Validate reCAPTCHA
+  if (!recaptchaToken.value) {
+    notyf.error("Please verify that you are not a robot.");
+    return;
+  }
+
   isLoading.value = true;
 
   try {
@@ -96,26 +173,30 @@ const submitForm = async () => {
       },
       body: JSON.stringify({
         access_key: WEB3FORMS_ACCESS_KEY,
-        subject: subject,
+        subject,
         name: name.value,
         email: email.value,
         message: message.value,
+        "g-recaptcha-response": recaptchaToken.value, // required by Web3Forms
       }),
     });
 
     const result = await response.json();
 
     if (result.success) {
-      console.log(result);
-      notyf.success("Message Sent!"); // ✅ fixed
+      notyf.success("Message Sent!");
+      name.value = "";
+      email.value = "";
+      message.value = "";
     } else {
-      notyf.error("Failed to send message");
+      notyf.error("Failed to send message.");
     }
   } catch (error) {
     console.log(error);
-    notyf.error("Failed to send message");
+    notyf.error("Failed to send message.");
+  } finally {
+    resetRecaptcha();
+    isLoading.value = false;
   }
-
-  isLoading.value = false;
 };
 </script>
